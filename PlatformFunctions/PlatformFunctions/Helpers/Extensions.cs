@@ -1,7 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Azure.Storage.Blob;
+using Microsoft.Extensions.Logging;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace PlatformFunctions.Helpers
 {
@@ -33,6 +37,38 @@ namespace PlatformFunctions.Helpers
                 return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// List blobs in a container
+        /// </summary>
+        /// <typeparam name="T">The type by which to filter results; use <see cref="IListBlobItem"/> to return all </typeparam>
+        /// <param name="container">from which to list blobs</param>
+        /// <param name="prefix">This represents one or more virtual directories (e.g. "\folder1\folder2")</param>
+        /// <returns>An enumerable of the given type</returns>
+        public static async Task<IEnumerable<T>> ListBlobs<T>(this CloudBlobContainer container, string prefix = "") where T : class, IListBlobItem
+        {
+            List<T> results = new List<T>();
+            BlobContinuationToken continuationToken = null;
+
+            do
+            {
+                BlobResultSegment resultSegment = await container.ListBlobsSegmentedAsync(prefix,
+                    false, BlobListingDetails.Metadata, null, continuationToken, null, null);
+
+                foreach (var blobItem in resultSegment.Results)
+                {
+                    // A hierarchical listing may return both virtual directories and blobs.
+                    if (blobItem is T blob)
+                        results.Add(blob);
+                }
+
+                // While ContinuationToken is not null, there are more segments to retrieve
+                continuationToken = resultSegment.ContinuationToken;
+
+            } while (continuationToken != null);
+
+            return results;
         }
     }
 }

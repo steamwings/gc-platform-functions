@@ -19,7 +19,7 @@ namespace PlatformFunctions.Helpers
         /// Wrapper method to get a configuration value.
         /// </summary>
         /// <param name="key">The <see cref="ConfigKeys"/> </param>
-        /// <returns></returns>
+        /// <returns>string configuration value</returns>
         public static string Get(ConfigKeys key, string fallback = null)
         {
 #if DEBUG
