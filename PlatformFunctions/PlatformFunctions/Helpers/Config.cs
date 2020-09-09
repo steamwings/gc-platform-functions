@@ -10,7 +10,8 @@ namespace PlatformFunctions.Helpers
         MailServerSshKey,
         MailServerUsername,
         MailServerDomain,
-        MailServerBackupFolderPath
+        MailServerBackupFolderPath,
+        MailServerBackupArchiveFilename
     }
 
     public static class Config
