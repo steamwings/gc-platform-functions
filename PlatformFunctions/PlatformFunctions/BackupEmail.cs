@@ -6,7 +6,6 @@ using Microsoft.Azure.Storage.Blob;
 using PlatformFunctions.Helpers;
 using Renci.SshNet;
 using System.IO;
-using Microsoft.Azure.Storage.Auth;
 
 namespace PlatformFunctions
 {
@@ -54,7 +53,15 @@ namespace PlatformFunctions
             if (log.CheckNull(LogLevel.Error, new { username, domain, backupFolder, archiveFilename, ssh = Config.Get(ConfigKeys.MailServerSshKey) }, out _,
                 "Missing configuration value."))
                 return false;
-            
+
+            var sasPolicy = new SharedAccessBlobPolicy
+            {
+                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(2),
+                Permissions = SharedAccessBlobPermissions.Write | SharedAccessBlobPermissions.Create
+            };
+
+            var sasUri = blob.Uri + blob.GetSharedAccessSignature(sasPolicy);
+
             try
             {
                 ConnectionInfo connectionInfo;
@@ -72,19 +79,10 @@ namespace PlatformFunctions
                     ssh.RunCommand($"sudo tar -cvf {archiveFilename} {backupFolder}")))
                     return false;
 
-                // Connect with SFTP
-                using var sftp = new SftpClient(connectionInfo);
-                sftp.Connect();
-
-                if (!sftp.Exists(archiveFilename))
-                {
-                    log.LogError("The backup archive was not found!");
+                // PUT the archive in Blob storage
+                if (!TrySshCommand(log, "Upload blob",
+                    ssh.RunCommand($"curl -T \"{archiveFilename}\" \"{sasUri}\" -H \"x-ms-blob-type: BlockBlob\"")))
                     return false;
-                }
-
-                var stream = sftp.OpenRead(archiveFilename);
-                await blob.UploadFromStreamAsync(stream);
-                stream.Dispose();
 
                 ssh.RunCommand($"rm -f {archiveFilename}");
 
