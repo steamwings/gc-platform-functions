@@ -51,8 +51,9 @@ namespace PlatformFunctions.Helpers
 
         public static Stream GetStream(ConfigKeys key, Encoding encoding = null)
         {
+            string value = Get(key);
             encoding ??= Encoding.UTF8;
-            return new MemoryStream(encoding.GetBytes(Get(key)));
+            return new MemoryStream(encoding.GetBytes(value));
         }
     }
 }

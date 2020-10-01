@@ -16,7 +16,7 @@ namespace PlatformFunctions
     {
         const bool DoRunOnStartup
 #if DEBUG
-            = true; // This allows immediate trigger on local run
+            = false; // Set true for immediate trigger on local run
 #else
             = false;
 #endif
@@ -28,6 +28,9 @@ namespace PlatformFunctions
         /// <param name="myTimer">Timer that triggers this function--may be null when this is manually triggered</param>
         /// <param name="blob">New Blob to use for backup</param>
         /// <param name="log"></param>
+        /// <remarks>
+        /// In reality, this function does not provide platform-related functionality and should eventually be moved to a separate infrastructure function app.
+        /// </remarks>
         [FunctionName(nameof(BackupEmail))]
         public static async Task Run(
             [TimerTrigger("0 30 5 * * *", RunOnStartup = DoRunOnStartup)] TimerInfo myTimer,
@@ -75,18 +78,21 @@ namespace PlatformFunctions
                 using var ssh = new SshClient(connectionInfo);
                 ssh.Connect();
 
+                // If these commands start taking a while, switch to nohup COMMAND & 
+
+                // Update and upgrade packages in the background
+                ssh.RunCommand($"nohup sudo apt-get -y update && nohup sudo apt-get -y upgrade &");
+
                 if (!TrySshCommand(log, "Create archive file",
                     ssh.RunCommand($"sudo tar -cvf {archiveFilename} {backupFolder}")))
                     return false;
 
                 // PUT the archive in Blob storage
                 if (!TrySshCommand(log, "Upload blob",
-                    ssh.RunCommand($"curl -T \"{archiveFilename}\" \"{sasUri}\" -H \"x-ms-blob-type: BlockBlob\"")))
+                    ssh.RunCommand($"curl -T \"{archiveFilename}\" \"{sasUri}\" -H \"x-ms-blob-type: BlockBlob\" && rm -f {archiveFilename}")))
                     return false;
 
-                ssh.RunCommand($"rm -f {archiveFilename}");
-
-                // If successful, delete old backup files
+                // If blob upload was successful, delete old backup files
                 foreach (var b in await blob.Container.ListBlobs<CloudBlockBlob>())
                 {
                     // Delete when > than 2 days old; generally keeps a couple files just in case
