@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-
+    <RunSettingsFilePath>$(SolutionDir)\PlatformFunctionsTests\tests.runsettings</RunSettingsFilePath>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

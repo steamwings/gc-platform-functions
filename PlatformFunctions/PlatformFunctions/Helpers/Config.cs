@@ -11,7 +11,10 @@ namespace PlatformFunctions.Helpers
         MailServerUsername,
         MailServerDomain,
         MailServerBackupFolderPath,
-        MailServerBackupArchiveFilename
+        MailServerBackupArchiveFilename,
+        ProfileWidthLarge,
+        ProfileWidthMedium,
+        ProfileWidthSmall
     }
 
     public static class Config
@@ -47,6 +50,13 @@ namespace PlatformFunctions.Helpers
             }
 #endif
             return Environment.GetEnvironmentVariable(key.ToString()) ?? fallback;
+        }
+
+        public static int GetInt(ConfigKeys key, int fallback = 0)
+        {
+            return int.TryParse(Environment.GetEnvironmentVariable(key.ToString()), out int number) 
+                ? number
+                : fallback;
         }
 
         public static Stream GetStream(ConfigKeys key, Encoding encoding = null)
