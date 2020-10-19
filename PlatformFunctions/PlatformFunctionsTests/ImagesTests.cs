@@ -11,7 +11,6 @@ using SixLabors.ImageSharp.PixelFormats;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Xml.Schema;
 
 namespace PlatformFunctionsTests
 {
@@ -20,13 +19,11 @@ namespace PlatformFunctionsTests
     {
         private const string SampleGuid = "0f316fb1-db52-4790-b311-fe348a7a0cbe";
         private const string SamplePicPath = "samplePic";
-        private static CloudBlobContainer PicsContainer;
         private static CloudBlobContainer PicsUploadsContainer;
 
         [ClassInitialize]
-        public static async void ClassInitialize(TestContext context)
+        public static async Task ClassInitialize(TestContext context)
         {
-            PicsContainer = TestHelper.CreateStorageContainer(context, StorageContainer.ProfilePics);
             PicsUploadsContainer = TestHelper.CreateStorageContainer(context, StorageContainer.ProfilePicsUploads);
 
             // Download sample pic
@@ -36,21 +33,39 @@ namespace PlatformFunctionsTests
             downloadStream.CopyTo(fileStream);
         }
 
+        [TestMethod]
+        public void ScalesSamplePic()
+        {
+            var blob = PicsUploadsContainer.GetBlockBlobReference(SampleGuid);
+            var bytes = File.ReadAllBytes(SamplePicPath);
+            blob.UploadFromByteArray(bytes, 0, bytes.Length);
+
+            using var largeStream = new MemoryStream();
+            using var mediumStream = new MemoryStream();
+            using var smallStream = new MemoryStream();
+            ProfilePictureUploaded.Run(blob, largeStream, mediumStream, smallStream, SampleGuid, NullLogger.Instance);
+
+            CheckSquarePng(largeStream, mediumStream, smallStream);
+            Assert.IsFalse(blob.Exists());
+        }
+
         /// <summary>
-        /// Integration test to verify that medium and thumbnail images are created 
+        /// Integration test to verify that scaled images are created 
         /// and appropriately added when a profile picture is uploaded
         /// </summary>
+        [DataRow("https://via.placeholder.com/600")]
         [DataRow("https://via.placeholder.com/600.gif")]
         [DataRow("https://via.placeholder.com/100.png")]
-        [DataRow("https://via.placeholder.com/10000.jpg")]
+        [DataRow("https://via.placeholder.com/1000.jpg")]
         [DataTestMethod]
-        public async Task CreatesMediumAndThumbnail(string samplePicUrl)
+        public async Task CreatesScaledImages(string samplePicUrl)
         {
             var blob = PicsUploadsContainer.GetBlockBlobReference(SampleGuid);
 
             using var http = new HttpClient();
             using var downloadStream = await http.GetStreamAsync(samplePicUrl);
-            blob.UploadFromStream(downloadStream);
+            Assert.IsFalse(downloadStream.ToString().Contains("too big", System.StringComparison.OrdinalIgnoreCase));
+            await blob.UploadFromStreamAsync(downloadStream);
 
             Assert.IsTrue(blob.Exists());
 
@@ -59,17 +74,13 @@ namespace PlatformFunctionsTests
             using (var smallStream = new MemoryStream())
             {
                 ProfilePictureUploaded.Run(blob, largeStream, mediumStream, smallStream, SampleGuid, NullLogger.Instance);
-                Assert.That.IsSquare(Image.Load<Rgba32>(largeStream, out var formatL).Bounds(), Config.GetInt(ConfigKeys.ProfileWidthLarge));
-                Assert.That.IsSquare(Image.Load<Rgba32>(mediumStream, out var formatM).Bounds(), Config.GetInt(ConfigKeys.ProfileWidthMedium));
-                Assert.That.IsSquare(Image.Load<Rgba32>(smallStream, out var formatS).Bounds(), Config.GetInt(ConfigKeys.ProfileWidthSmall));
-                Assert.IsInstanceOfType(formatL, typeof(PngFormat));
-                Assert.IsInstanceOfType(formatM, typeof(PngFormat));
-                Assert.IsInstanceOfType(formatS, typeof(PngFormat));
+                CheckSquarePng(largeStream, mediumStream, smallStream);
             }
 
             Assert.IsFalse(blob.Exists());
         }
 
+        [TestMethod]
         public void DeletesTextFile()
         {
             var blob = PicsUploadsContainer.GetBlockBlobReference(SampleGuid);
@@ -80,12 +91,14 @@ namespace PlatformFunctionsTests
             using var smallStream = new MemoryStream();
             ProfilePictureUploaded.Run(blob, largeStream, mediumStream, smallStream, SampleGuid, NullLogger.Instance);
 
+            // The output streams should not have been written to
             Assert.AreEqual(0, largeStream.Position);
             Assert.AreEqual(0, mediumStream.Position);
             Assert.AreEqual(0, smallStream.Position);
             Assert.IsFalse(blob.Exists());
         }
 
+        [TestMethod]
         public void DeletesInvalidPicture()
         {
             var blob = PicsUploadsContainer.GetBlockBlobReference(SampleGuid);
@@ -98,10 +111,27 @@ namespace PlatformFunctionsTests
             using var smallStream = new MemoryStream();
             ProfilePictureUploaded.Run(blob, largeStream, mediumStream, smallStream, SampleGuid, NullLogger.Instance);
 
+            // The output streams should not have been written to
             Assert.AreEqual(0, largeStream.Position);
             Assert.AreEqual(0, mediumStream.Position);
             Assert.AreEqual(0, smallStream.Position);
             Assert.IsFalse(blob.Exists());
+        }
+
+        private void CheckSquarePng(Stream large, Stream medium, Stream small)
+        {
+            Assert.IsTrue(0 < large.Position);
+            Assert.IsTrue(0 < medium.Position);
+            Assert.IsTrue(0 < small.Position);
+            large.Position = 0;
+            medium.Position = 0;
+            small.Position = 0;
+            Assert.That.IsSquare(Image.Load<Rgba32>(large, out var formatL).Bounds(), Config.GetInt(ConfigKeys.ProfileWidthLarge));
+            Assert.That.IsSquare(Image.Load<Rgba32>(medium, out var formatM).Bounds(), Config.GetInt(ConfigKeys.ProfileWidthMedium));
+            Assert.That.IsSquare(Image.Load<Rgba32>(small, out var formatS).Bounds(), Config.GetInt(ConfigKeys.ProfileWidthSmall));
+            Assert.IsInstanceOfType(formatL, typeof(PngFormat));
+            Assert.IsInstanceOfType(formatM, typeof(PngFormat));
+            Assert.IsInstanceOfType(formatS, typeof(PngFormat));
         }
     }
 }
