@@ -50,6 +50,14 @@ namespace PlatformFunctions.Images
                 {
                     using var input = Image.Load<Rgba32>(blobStream, out IImageFormat format);
                     log.LogTrace($"${nameof(ProfilePictureUploaded)} processing blob (Name:{name}, Format:{format.Name}");
+
+                    var sideLength = Math.Min(input.Width, input.Height);
+                    var centerCrop = new Rectangle(
+                        input.Width > input.Height ? (input.Width - sideLength) / 2 : 0,
+                        input.Height > input.Width ? (input.Height - sideLength) / 2 : 0,
+                        sideLength, sideLength);
+                    input.Mutate(x => CropExtensions.Crop(x, centerCrop)); 
+
                     input.Mutate(x => x.Resize(widthLarge, widthLarge));
                     input.Save(large, encoder);
                     input.Mutate(x => x.Resize(widthMedium, widthMedium));
