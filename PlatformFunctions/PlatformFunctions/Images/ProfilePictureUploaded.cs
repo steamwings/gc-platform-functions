@@ -25,7 +25,7 @@ namespace PlatformFunctions.Images
         /// TODO: Immediately revoke SAS Url used (probably requires Active Directory)
         /// </remarks>
         [FunctionName(nameof(ProfilePictureUploaded))]
-        public static void Run([BlobTrigger("profile-pics-uploaded/{name}", Connection = "SharedUserStorage")] CloudBlockBlob profilePic,
+        public static void Run([BlobTrigger("profile-pics-uploads/{name}", Connection = "SharedUserStorage")] CloudBlockBlob profilePic,
             [Blob("profile-pics/{name}-lg", FileAccess.Write, Connection = "SharedUserStorage")] Stream large,
             [Blob("profile-pics/{name}-md", FileAccess.Write, Connection = "SharedUserStorage")] Stream medium,
             [Blob("profile-pics/{name}-sm", FileAccess.Write, Connection = "SharedUserStorage")] Stream small,
