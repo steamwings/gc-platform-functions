@@ -81,6 +81,25 @@ namespace PlatformFunctionsTests
         }
 
         [TestMethod]
+        public void IgnoresInvalidFilename()
+        {
+            var badId = "10f316fb";
+            var blob = PicsUploadsContainer.GetBlockBlobReference(badId);
+            var bytes = File.ReadAllBytes(SamplePicPath);
+            blob.UploadFromByteArray(bytes, 0, bytes.Length);
+
+            Assert.IsTrue(blob.Exists());
+
+            using var largeStream = new MemoryStream();
+            using var mediumStream = new MemoryStream();
+            using var smallStream = new MemoryStream();
+            ProfilePictureUploaded.Run(blob, largeStream, mediumStream, smallStream, badId, NullLogger.Instance);
+
+            Assert.That.StreamNotWritten(smallStream, mediumStream, largeStream);
+            Assert.IsFalse(blob.Exists());
+        }
+
+        [TestMethod]
         public void DeletesTextFile()
         {
             var blob = PicsUploadsContainer.GetBlockBlobReference(SampleGuid);
@@ -91,10 +110,7 @@ namespace PlatformFunctionsTests
             using var smallStream = new MemoryStream();
             ProfilePictureUploaded.Run(blob, largeStream, mediumStream, smallStream, SampleGuid, NullLogger.Instance);
 
-            // The output streams should not have been written to
-            Assert.AreEqual(0, largeStream.Position);
-            Assert.AreEqual(0, mediumStream.Position);
-            Assert.AreEqual(0, smallStream.Position);
+            Assert.That.StreamNotWritten(smallStream, mediumStream, largeStream);
             Assert.IsFalse(blob.Exists());
         }
 
@@ -111,10 +127,7 @@ namespace PlatformFunctionsTests
             using var smallStream = new MemoryStream();
             ProfilePictureUploaded.Run(blob, largeStream, mediumStream, smallStream, SampleGuid, NullLogger.Instance);
 
-            // The output streams should not have been written to
-            Assert.AreEqual(0, largeStream.Position);
-            Assert.AreEqual(0, mediumStream.Position);
-            Assert.AreEqual(0, smallStream.Position);
+            Assert.That.StreamNotWritten(smallStream, mediumStream, largeStream);
             Assert.IsFalse(blob.Exists());
         }
 

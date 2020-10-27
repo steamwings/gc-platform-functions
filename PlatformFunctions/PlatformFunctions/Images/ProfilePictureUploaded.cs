@@ -33,6 +33,12 @@ namespace PlatformFunctions.Images
         {
             log.LogInformation($"${nameof(ProfilePictureUploaded)} processing blob (Name:{name} \n Size: {profilePic.Properties.Length} Bytes)");
 
+            if (!Guid.TryParse(name, out _))
+            {
+                log.LogWarning("{0}: Filename '{1}' is not a guid.", nameof(ProfilePictureUploaded), name);
+                goto end;
+            }
+
             var encoder = new PngEncoder(); // Set this to whatever we want the default format to be
             int widthLarge = Config.GetInt(ConfigKeys.ProfileWidthLarge, 800);
             int widthMedium = Config.GetInt(ConfigKeys.ProfileWidthMedium, 300);
@@ -54,11 +60,12 @@ namespace PlatformFunctions.Images
                 catch(Exception e) when (e is UnknownImageFormatException || e is InvalidImageContentException)
                 {
                     // TODO Notify user the upload was invalid
-                    log.LogWarning(e, $"${nameof(ProfilePictureUploaded)} read invalid profile picture '{name}'. The image will be deleted.");
+                    log.LogWarning(e, $"{nameof(ProfilePictureUploaded)} read invalid profile picture '{name}'. The image will be deleted.");
                 }
             }
 
-            // Always delete once we're done
+        // Always delete once we're done
+        end:
             profilePic.Delete();
         }
     }

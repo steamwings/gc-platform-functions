@@ -7,6 +7,7 @@ namespace PlatformFunctions.Helpers
 {
     public enum ConfigKeys
     {
+        DoPeriodicMailBackup,
         MailServerSshKey,
         MailServerUsername,
         MailServerDomain,
@@ -14,7 +15,7 @@ namespace PlatformFunctions.Helpers
         MailServerBackupArchiveFilename,
         ProfileWidthLarge,
         ProfileWidthMedium,
-        ProfileWidthSmall
+        ProfileWidthSmall,
     }
 
     public static class Config
@@ -50,6 +51,13 @@ namespace PlatformFunctions.Helpers
             }
 #endif
             return Environment.GetEnvironmentVariable(key.ToString()) ?? fallback;
+        }
+
+        public static bool GetBool(ConfigKeys key, bool fallback = false)
+        {
+            return bool.TryParse(Environment.GetEnvironmentVariable(key.ToString()), out bool flag)
+                ? flag
+                : fallback;
         }
 
         public static int GetInt(ConfigKeys key, int fallback = 0)

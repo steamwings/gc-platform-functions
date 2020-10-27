@@ -38,7 +38,9 @@ namespace PlatformFunctions
             ILogger log)
         {
             log.LogInformation($"{nameof(BackupEmail)} timer triggered at {DateTime.Now}. Next run scheduled at {myTimer?.FormatNextOccurrences(1)}.");
-            
+
+            if (!Config.GetBool(ConfigKeys.DoPeriodicMailBackup)) return;
+
             await DoBackup(blob, log);
             
             return;
