@@ -13,9 +13,6 @@ namespace PlatformFunctions.Helpers
         MailServerDomain,
         MailServerBackupFolderPath,
         MailServerBackupArchiveFilename,
-        ProfileWidthLarge,
-        ProfileWidthMedium,
-        ProfileWidthSmall,
     }
 
     public static class Config
@@ -57,13 +54,6 @@ namespace PlatformFunctions.Helpers
         {
             return bool.TryParse(Environment.GetEnvironmentVariable(key.ToString()), out bool flag)
                 ? flag
-                : fallback;
-        }
-
-        public static int GetInt(ConfigKeys key, int fallback = 0)
-        {
-            return int.TryParse(Environment.GetEnvironmentVariable(key.ToString()), out int number) 
-                ? number
                 : fallback;
         }
 
